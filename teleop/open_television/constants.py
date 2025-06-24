@@ -11,14 +11,14 @@ T_to_unitree_right_wrist = np.array([[0, 0, -1, 0],
                                      [1, 0, 0, 0],
                                      [0, 0, 0, 1]])
 
-T_to_realman_left_wrist = np.array([[ 0, 1, 0, 0],
-    [-1, 0, 0, 0],
+T_to_realman_left_wrist = np.array([[ 0, -1, 0, 0],
+    [1, 0, 0, 0],
     [ 0, 0, 1, 0],
     [ 0, 0, 0, 1]
 ])
 
-T_to_realman_right_wrist = np.array([[ 0, -1, 0, 0],
-    [1, 0, 0, 0],
+T_to_realman_right_wrist = np.array([[ 0, 1, 0, 0],
+    [-1, 0, 0, 0],
     [ 0, 0, 1, 0],
     [ 0, 0, 0, 1]
 ])

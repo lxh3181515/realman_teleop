@@ -1,0 +1,29 @@
+<launch>
+  <!-- 可配置参数 -->
+  <arg name="arm_type"     default="rm65"/>
+  <arg name="end_effector" default="rmg24"/>
+  
+  <!-- 动态生成URDF -->
+  <param name="robot_description" 
+         command="$(find xacro)/xacro 
+                  $(find robot_description)/urdf/robots/embodied_dual_arms.urdf.xacro
+                  arm_type:=$(arg arm_type)
+                  end_effector:=$(arg end_effector)"/>
+
+  <node
+    name="joint_state_publisher_gui"
+    pkg="joint_state_publisher_gui"
+    type="joint_state_publisher_gui" />
+  <node
+    name="robot_state_publisher"
+    pkg="robot_state_publisher"
+    type="robot_state_publisher" />
+  <node
+    name="rviz"
+    pkg="rviz"
+    type="rviz"
+    args="-d $(find robot_description)/urdf.rviz" />
+</launch>
+
+
+

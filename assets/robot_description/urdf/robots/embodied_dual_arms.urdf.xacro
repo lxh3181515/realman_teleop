@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<robot name="robot_description" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <!-- 基础模块 -->
+  <xacro:include filename="$(find robot_description)/urdf/common/woosh_agv.urdf.xacro"/>
+  <xacro:include filename="$(find robot_description)/urdf/common/body_head_platform.urdf.xacro"/>
+
+  <!-- 动态选择末端执行器 -->
+  <xacro:arg name="end_effector" default="rmg24"/>
+  <xacro:if value="${'$(arg end_effector)' == 'rmg24'}">
+    <xacro:include filename="$(find robot_description)/urdf/end_effectors/grippers/left_hand_rmg24.urdf.xacro"/>
+    <xacro:include filename="$(find robot_description)/urdf/end_effectors/grippers/right_hand_rmg24.urdf.xacro"/>
+  </xacro:if>
+  <xacro:if value="${'$(arg end_effector)' == 'aoyi'}">
+    <xacro:include filename="$(find robot_description)/urdf/end_effectors/hands/left_hand.urdf.xacro"/>
+    <xacro:include filename="$(find robot_description)/urdf/end_effectors/hands/right_hand.urdf.xacro"/>
+  </xacro:if>
+
+  <!-- 动态选择机械臂 -->
+  <xacro:arg name="arm_type" default="rm65"/>
+  <xacro:if value="${'$(arg arm_type)' == 'rm65'}">
+    <xacro:include filename="$(find robot_description)/urdf/rm65/rm65_b_v_left.urdf.xacro"/>
+    <xacro:include filename="$(find robot_description)/urdf/rm65/rm65_b_v_right.urdf.xacro"/>
+  </xacro:if>
+  <xacro:if value="${'$(arg arm_type)'== 'rm75'}">
+    <xacro:include filename="$(find robot_description)/urdf/rm75/rm75_b_v_left.urdf.xacro"/>
+    <xacro:include filename="$(find robot_description)/urdf/rm75/rm75_b_v_right.urdf.xacro"/>
+  </xacro:if>
+
+
+    <!-- 动态选择关节-->
+  <xacro:arg name="end_effector" default="rmg24"/>
+  <xacro:if value="${'$(arg end_effector)' == 'rmg24'}">
+    <xacro:include filename="$(find robot_description)/urdf/end_effectors/grippers/joint_rmg24.urdf.xacro"/>
+  </xacro:if>
+  <xacro:if value="${'$(arg end_effector)' == 'aoyi'}">
+      <xacro:include filename="$(find robot_description)/urdf/end_effectors/hands/joint.urdf.xacro"/>
+  </xacro:if>
+
+  <!-- Gazebo公共配置 -->
+  <xacro:include filename="$(find robot_description)/urdf/common/common_gazebo.xacro"/>
+
+  <!-- 动态加载传动配置 -->
+  <xacro:if value="${'$(arg arm_type)' == 'rm65'}">
+    <xacro:include filename="$(find robot_description)/urdf/rm65/rm65_b_v_left_transmission.xacro"/>
+    <xacro:include filename="$(find robot_description)/urdf/rm65/rm65_b_v_right_transmission.xacro"/>
+  </xacro:if>
+  <xacro:if value="${'$(arg arm_type)' == 'rm75'}">
+    <xacro:include filename="$(find robot_description)/urdf/rm75/rm75_b_v_left_transmission.xacro"/>
+    <xacro:include filename="$(find robot_description)/urdf/rm75/rm75_b_v_right_transmission.xacro"/>
+  </xacro:if>
+
+  <!-- 末端执行器传动配置 -->
+  <xacro:if value="${'$(arg end_effector)' == 'rmg24'}">
+    <xacro:include filename="$(find robot_description)/urdf/end_effectors/grippers/left_hand_rmg24_transmission.xacro"/>
+    <xacro:include filename="$(find robot_description)/urdf/end_effectors/grippers/right_hand_rmg24_transmission.xacro"/>
+  </xacro:if>
+
+  <!-- 平台传动配置 -->
+  <xacro:include filename="$(find robot_description)/urdf/common/body_head_platform_transmission.xacro"/>
+
+</robot>

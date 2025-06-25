@@ -76,9 +76,9 @@ class TeleVisionWrapper:
         left_wrist_vuer_mat, left_wrist_flag  = mat_update(const_left_wrist_vuer_mat, self.tv.left_hand.copy())
         right_wrist_vuer_mat, right_wrist_flag = mat_update(const_right_wrist_vuer_mat, self.tv.right_hand.copy())
         
-        print(f"self.tv.head_matrix: {self.tv.head_matrix}")
-        print(f"self.tv.left_hand: {self.tv.left_hand}")
-        print(f"self.tv.right_hand: {self.tv.right_hand}")
+        # print(f"self.tv.head_matrix: {self.tv.head_matrix}")
+        # print(f"self.tv.left_hand: {self.tv.left_hand}")
+        # print(f"self.tv.right_hand: {self.tv.right_hand}")
 
         # Change basis convention: VuerMat ((basis) OpenXR Convention) to WristMat ((basis) Robot Convention)
         # p.s. WristMat = T_{robot}_{openxr} * VuerMat * T_{robot}_{openxr}^T
@@ -95,8 +95,12 @@ class TeleVisionWrapper:
         left_wrist_mat  = T_robot_openxr @ left_wrist_vuer_mat @ fast_mat_inv(T_robot_openxr)
         right_wrist_mat = T_robot_openxr @ right_wrist_vuer_mat @ fast_mat_inv(T_robot_openxr)
 
-        print(f"left_wrist_mat: {left_wrist_mat}")
-        print(f"right_wrist_mat: {right_wrist_mat}")
+        # print(f"left_wrist_mat: {left_wrist_mat}")
+        # print(f"right_wrist_mat: {right_wrist_mat}")
+        head_pos_x = head_mat[0, 3]
+        head_pos_y = head_mat[1, 3]
+        head_pos_z = head_mat[2, 3]
+        print(f"head_pos_x: {head_pos_x}, head_pos_y: {head_pos_y}, head_pos_z: {head_pos_z}")
 
 
 
@@ -104,8 +108,9 @@ class TeleVisionWrapper:
         # Reason for right multiply (T_to_unitree_left_wrist) : Rotate 90 degrees counterclockwise about its own x-axis.
         # Reason for right multiply (T_to_unitree_right_wrist): Rotate 90 degrees clockwise about its own x-axis.
         unitree_left_wrist = left_wrist_mat @ (T_to_unitree_left_wrist if left_wrist_flag else np.eye(4)) @ T2_to_unitree_left_wrist
-        unitree_right_wrist = right_wrist_mat @ (T_to_unitree_right_wrist if right_wrist_flag else np.eye(4)) #@ T2_to_unitree_right_wrist
-
+        unitree_right_wrist = right_wrist_mat @ (T_to_unitree_right_wrist if right_wrist_flag else np.eye(4)) @ T2_to_unitree_right_wrist
+        # now rotate y 90 counter for left wrist, rotate y 90 clockwise for right wrist
+        # unitree_left_wrist = left_wrist_mat @ (T_to_unitree_left_wrist if left_wrist_flag else np.eye(4))
 
 
         # Transfer from WORLD to HEAD coordinate (translation only).
@@ -161,6 +166,17 @@ class TeleVisionWrapper:
         #   Rotate 90 degrees counterclockwise about its own z-axis.
         realman_right_wrist = T_to_realman_right_wrist @ unitree_right_wrist
 
+        # offset
+        realman_left_wrist[1, 3] += 0.15
+        realman_right_wrist[1, 3] += 0.15
+
+        realman_left_wrist[2, 3] += 0.25    
+        realman_right_wrist[2, 3] += 0.25
+
+        # 遮挡
+        realman_left_wrist[0, 3] += 0.05
+        realman_right_wrist[0, 3] -= 0.05
+
 
 
         return head_rmat, realman_left_wrist, realman_right_wrist, unitree_left_hand, unitree_right_hand
@@ -182,5 +198,4 @@ if __name__ == '__main__':
     # example2
     tv_wrapper = TeleVisionWrapper(binocular=True, img_shape=(480, 640 * 2, 3), img_shm_name=None)
 
-    t
     print("TeleVisionWrapper unit test program running...")

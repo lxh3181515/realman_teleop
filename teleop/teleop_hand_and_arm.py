@@ -28,6 +28,16 @@ import pickle
 import socket
 
 
+THUMB_INDEX_DISTANCE_MIN = 0.05  # Assuming a minimum Euclidean distance is 5 cm between thumb and index.
+THUMB_INDEX_DISTANCE_MAX = 0.09  # Assuming a maximum Euclidean distance is 9 cm between thumb and index.
+LEFT_MAPPED_MIN  = 0.0           # The minimum initial motor position when the gripper closes at startup.
+RIGHT_MAPPED_MIN = 0.0           # The minimum initial motor position when the gripper closes at startup.
+# The maximum initial motor position when the gripper closes before calibration (with the rail stroke calculated as 0.6 cm/rad * 9 rad = 5.4 cm).
+LEFT_MAPPED_MAX = LEFT_MAPPED_MIN + 1000.0 
+RIGHT_MAPPED_MAX = RIGHT_MAPPED_MIN + 1000.0
+
+
+
 def matrix_to_rpy(matrix):
     """Extract RPY (ZYX convention) from a 4x4 homogeneous matrix."""
     R = matrix[:3, :3]  # 提取旋转矩阵部分
@@ -90,7 +100,7 @@ if __name__ == '__main__':
     socket = context.socket(zmq.PUB)
     socket.bind("tcp://*:5556")  # 绑定到端口
 
-    topic = "avp_arm_data"
+    # topic = "avp_arm_data"
 
 
     ASPECT_RATIO_THRESHOLD = 2.0 # If the aspect ratio exceeds this value, it is considered binocular
@@ -135,6 +145,8 @@ if __name__ == '__main__':
     #     arm_ctrl = G1_23_ArmController()
     #     arm_ik = G1_23_ArmIK()
     
+    realman_left_hand_array = np.zeros((75,), dtype=np.float64)
+    realman_right_hand_array = np.zeros((75,), dtype=np.float64)
     # hand
     if args.hand == "dex3":
         left_hand_array = Array('d', 75, lock = True)         # [input]
@@ -164,6 +176,7 @@ if __name__ == '__main__':
         recorder = EpisodeWriter(task_dir = args.task_dir, frequency = args.frequency, rerun_log = True)
         recording = False
 
+    
     try:
         user_input = input("Please enter the start signal (enter 't' to start the IK program):\n")
         if user_input.lower() == 't':
@@ -184,14 +197,51 @@ if __name__ == '__main__':
                 print(f"left wrist position: x={left_x}, y={left_y}, z={left_z}")
                 print(f"right wrist position: x={right_x}, y={right_y}, z={right_z}")
 
-                left_hand
-
 
 
                 # send hand skeleton data to hand_ctrl.control_process
-                if args.hand:
-                    left_hand_array[:] = left_hand.flatten()
-                    right_hand_array[:] = right_hand.flatten()
+                # if args.hand:
+                realman_left_hand_array[:] = left_hand.flatten()
+                realman_right_hand_array[:] = right_hand.flatten()
+
+                left_hand_mat  = np.array(realman_left_hand_array[:]).reshape(25, 3).copy()
+                right_hand_mat = np.array(realman_right_hand_array[:]).reshape(25, 3).copy()
+
+                if not np.all(right_hand_mat == 0.0) and not np.all(left_hand_mat[4] == np.array([-1.13, 0.3, 0.15])): # if hand data has been initialized.
+                    left_euclidean_distance  = np.linalg.norm(left_hand_mat[9] - left_hand_mat[4])
+                    right_euclidean_distance = np.linalg.norm(right_hand_mat[9] - right_hand_mat[4])
+                    # Linear mapping from [0, THUMB_INDEX_DISTANCE_MAX] to gripper action range
+                    left_target_action  = np.interp(left_euclidean_distance, [THUMB_INDEX_DISTANCE_MIN, THUMB_INDEX_DISTANCE_MAX], [LEFT_MAPPED_MIN, LEFT_MAPPED_MAX])
+                    right_target_action = np.interp(right_euclidean_distance, [THUMB_INDEX_DISTANCE_MIN, THUMB_INDEX_DISTANCE_MAX], [RIGHT_MAPPED_MIN, RIGHT_MAPPED_MAX])
+                else:
+                    left_target_action  = (LEFT_MAPPED_MIN + LEFT_MAPPED_MAX) / 2
+                    right_target_action = (RIGHT_MAPPED_MIN + RIGHT_MAPPED_MAX) / 2
+
+                # left_target_action =np.zeros(1)
+                # right_target_action = np.zeros(1)
+
+                # np concat left wrist position, left wrist orientation, right wrist position, right wrist orientation, left_target_action and right_target_action
+                # 左手腕位置 [x, y, z]
+                left_pos = [left_x, left_y, left_z]
+                # 左手腕姿态 [roll, pitch, yaw]
+                left_rpy = [left_roll, left_pitch, left_yaw]
+
+                # 右手腕位置 [x, y, z]
+                right_pos = [right_x, right_y, right_z]
+                # 右手腕姿态 [roll, pitch, yaw]
+                right_rpy = [right_roll, right_pitch, right_yaw]
+
+                # 左右手抓取动作
+                gripper_actions = [left_target_action, right_target_action]
+
+                # 拼接成一个 numpy array
+                current_command = np.concatenate([left_pos, left_rpy, right_pos, right_rpy, gripper_actions])
+
+                upper_q_json = json.dumps(current_command.tolist())
+                zmq_msg = f"avp_upper_command {upper_q_json}"
+                socket.send_string(zmq_msg)
+                print(f"[ZMQ Published] {zmq_msg}")
+
 
                 # # get current state data.
                 # current_lr_arm_q  = arm_ctrl.get_current_dual_arm_q()

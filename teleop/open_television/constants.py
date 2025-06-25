@@ -5,11 +5,21 @@ T_to_unitree_left_wrist = np.array([[0, 0, 1, 0],
                                     [0, 1, 0, 0],
                                     [-1, 0, 0, 0],
                                     [0, 0, 0, 1]])
+# rotate z 180
+T2_to_unitree_left_wrist = np.array([[-1, 0, 0, 0],
+                                    [0, -1, 0, 0],
+                                    [0, 0, 1, 0],
+                                    [0, 0, 0, 1]])
 
 T_to_unitree_right_wrist = np.array([[0, 0, -1, 0],
                                      [0, 1, 0, 0],
                                      [1, 0, 0, 0],
                                      [0, 0, 0, 1]])
+# # rotate z 180
+# T2_to_unitree_right_wrist = np.array([[-1, 0, 0, 0],
+#                                     [0, -1, 0, 0],
+#                                     [0, 0, 1, 0],
+#                                     [0, 0, 0, 1]])
 
 T_to_realman_left_wrist = np.array([[ 0, -1, 0, 0],
     [1, 0, 0, 0],

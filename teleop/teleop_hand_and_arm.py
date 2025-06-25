@@ -184,6 +184,8 @@ if __name__ == '__main__':
                 print(f"left wrist position: x={left_x}, y={left_y}, z={left_z}")
                 print(f"right wrist position: x={right_x}, y={right_y}, z={right_z}")
 
+                left_hand
+
 
 
                 # send hand skeleton data to hand_ctrl.control_process

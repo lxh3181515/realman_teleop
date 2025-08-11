@@ -105,7 +105,7 @@ https://<Host_IP>:8012?ws=wss://<Host_IP>:8012
     点击 Enter VR 并允许权限
 
 🧩 项目结构
-
+```bash
 realman_teleop/
 │
 ├── teleop/
@@ -116,7 +116,7 @@ realman_teleop/
 │   └── teleop_hand_and_arm.py  # VR 手部姿态解析与网络发送主程序
 │
 └── README.md
-
+```
 🔮 后续计划
 
 增加 QP IK 求解器，提升姿态跟随稳定性

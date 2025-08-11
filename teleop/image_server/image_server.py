@@ -309,7 +309,7 @@ if __name__ == "__main__":
         'fps':30,                                                          # frame per second
         'head_camera_type': 'realsense',                                  # opencv or realsense
         'head_camera_image_shape': [480, 640],                            # Head camera resolution  [height, width]
-        'head_camera_id_numbers': ["218622271739"],                       # realsense camera's serial number
+        'head_camera_id_numbers': ["335622072080"],                       # realsense camera's serial number
         # 'wrist_camera_type': 'opencv', 
         # 'wrist_camera_image_shape': [480, 640],                           # Wrist camera resolution  [height, width]
         # 'wrist_camera_id_numbers': [0,1],                                 # '/dev/video0' and '/dev/video1' (opencv)
@@ -317,11 +317,11 @@ if __name__ == "__main__":
     # config = {
     #     'fps': 30,
     #     'head_camera_type': 'opencv',
-    #     'head_camera_image_shape': [480, 1280],  # Head camera resolution
+    #     'head_camera_image_shape': [480, 848],  # Head camera resolution
     #     'head_camera_id_numbers': [0],
-    #     'wrist_camera_type': 'opencv',
-    #     'wrist_camera_image_shape': [480, 640],  # Wrist camera resolution
-    #     'wrist_camera_id_numbers': [2, 4],
+    #     # 'wrist_camera_type': 'opencv',
+    #     # 'wrist_camera_image_shape': [480, 640],  # Wrist camera resolution
+    #     # 'wrist_camera_id_numbers': [2, 4],
     # }
 
     server = ImageServer(config, Unit_Test=False)

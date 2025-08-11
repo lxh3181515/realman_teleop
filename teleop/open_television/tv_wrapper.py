@@ -97,11 +97,6 @@ class TeleVisionWrapper:
 
         # print(f"left_wrist_mat: {left_wrist_mat}")
         # print(f"right_wrist_mat: {right_wrist_mat}")
-        head_pos_x = head_mat[0, 3]
-        head_pos_y = head_mat[1, 3]
-        head_pos_z = head_mat[2, 3]
-        print(f"head_pos_x: {head_pos_x}, head_pos_y: {head_pos_y}, head_pos_z: {head_pos_z}")
-
 
 
         # Change wrist convention: WristMat ((Left Wrist) XR/AppleVisionPro Convention) to UnitreeWristMat((Left Wrist URDF) Unitree Convention)

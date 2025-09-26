@@ -1,7 +1,8 @@
 # this file is legacy, need to fix.
-from unitree_sdk2py.core.channel import ChannelPublisher, ChannelSubscriber, ChannelFactoryInitialize # dds
-from unitree_sdk2py.idl.unitree_go.msg.dds_ import MotorCmds_, MotorStates_                           # idl
-from unitree_sdk2py.idl.default import unitree_go_msg_dds__MotorCmd_
+# 删除unitree_sdk2py相关导入
+# from unitree_sdk2py.core.channel import ChannelPublisher, ChannelSubscriber, ChannelFactoryInitialize # dds
+# from unitree_sdk2py.idl.unitree_go.msg.dds_ import MotorCmds_, MotorStates_                           # idl
+# from unitree_sdk2py.idl.default import unitree_go_msg_dds__MotorCmd_
 
 from teleop.robot_control.hand_retargeting import HandRetargeting, HandType
 import numpy as np
@@ -25,29 +26,29 @@ class Inspire_Controller:
             self.hand_retargeting = HandRetargeting(HandType.INSPIRE_HAND)
         else:
             self.hand_retargeting = HandRetargeting(HandType.INSPIRE_HAND_Unit_Test)
-            ChannelFactoryInitialize(0)
+            # ChannelFactoryInitialize(0) # 删除
 
-        # initialize handcmd publisher and handstate subscriber
-        self.HandCmb_publisher = ChannelPublisher(kTopicInspireCommand, MotorCmds_)
-        self.HandCmb_publisher.Init()
-
-        self.HandState_subscriber = ChannelSubscriber(kTopicInspireState, MotorStates_)
-        self.HandState_subscriber.Init()
+        # 删除handcmd publisher和handstate subscriber相关代码
+        # self.HandCmb_publisher = ChannelPublisher(kTopicInspireCommand, MotorCmds_)
+        # self.HandCmb_publisher.Init()
+        # self.HandState_subscriber = ChannelSubscriber(kTopicInspireState, MotorStates_)
+        # self.HandState_subscriber.Init()
 
         # Shared Arrays for hand states
         self.left_hand_state_array  = Array('d', Inspire_Num_Motors, lock=True)  
         self.right_hand_state_array = Array('d', Inspire_Num_Motors, lock=True)
 
-        # initialize subscribe thread
-        self.subscribe_state_thread = threading.Thread(target=self._subscribe_hand_state)
-        self.subscribe_state_thread.daemon = True
-        self.subscribe_state_thread.start()
+        # 删除subscribe thread相关代码
+        # self.subscribe_state_thread = threading.Thread(target=self._subscribe_hand_state)
+        # self.subscribe_state_thread.daemon = True
+        # self.subscribe_state_thread.start()
 
-        while True:
-            if any(self.right_hand_state_array): # any(self.left_hand_state_array) and 
-                break
-            time.sleep(0.01)
-            print("[Inspire_Controller] Waiting to subscribe dds...")
+        # 删除等待DDS订阅的循环
+        # while True:
+        #     if any(self.right_hand_state_array): # any(self.left_hand_state_array) and 
+        #         break
+        #     time.sleep(0.01)
+        #     print("[Inspire_Controller] Waiting to subscribe dds...")
 
         hand_control_process = Process(target=self.control_process, args=(left_hand_array, right_hand_array,  self.left_hand_state_array, self.right_hand_state_array,
                                                                           dual_hand_data_lock, dual_hand_state_array, dual_hand_action_array))
@@ -56,26 +57,28 @@ class Inspire_Controller:
 
         print("Initialize Inspire_Controller OK!\n")
 
-    def _subscribe_hand_state(self):
-        while True:
-            hand_msg  = self.HandState_subscriber.Read()
-            if hand_msg is not None:
-                for idx, id in enumerate(Inspire_Left_Hand_JointIndex):
-                    self.right_hand_state_array[idx] = hand_msg.states[id].q
-                for idx, id in enumerate(Inspire_Right_Hand_JointIndex):
-                    self.left_hand_state_array[idx] = hand_msg.states[id].q
-            time.sleep(0.002)
+    # 删除订阅hand state的线程方法
+    # def _subscribe_hand_state(self):
+    #     while True:
+    #         hand_msg  = self.HandState_subscriber.Read()
+    #         if hand_msg is not None:
+    #             for idx, id in enumerate(Inspire_Left_Hand_JointIndex):
+    #                 self.right_hand_state_array[idx] = hand_msg.states[id].q
+    #             for idx, id in enumerate(Inspire_Right_Hand_JointIndex):
+    #                 self.left_hand_state_array[idx] = hand_msg.states[id].q
+    #         time.sleep(0.002)
 
     def ctrl_dual_hand(self, left_q_target, right_q_target):
         """
         Set current left, right hand motor state target q
         """
-        for idx, id in enumerate(Inspire_Left_Hand_JointIndex):             
-            self.hand_msg.cmds[id].q = left_q_target[idx]         
-        for idx, id in enumerate(Inspire_Right_Hand_JointIndex):             
-            self.hand_msg.cmds[id].q = right_q_target[idx] 
-
-        self.HandCmb_publisher.Write(self.hand_msg)
+        # 删除DDS发布相关代码
+        # for idx, id in enumerate(Inspire_Left_Hand_JointIndex):             
+        #     self.hand_msg.cmds[id].q = left_q_target[idx]         
+        # for idx, id in enumerate(Inspire_Right_Hand_JointIndex):             
+        #     self.hand_msg.cmds[id].q = right_q_target[idx] 
+        # self.HandCmb_publisher.Write(self.hand_msg)
+        pass
         # print("hand ctrl publish ok.")
     
     def control_process(self, left_hand_array, right_hand_array, left_hand_state_array, right_hand_state_array,
@@ -85,14 +88,14 @@ class Inspire_Controller:
         left_q_target  = np.full(Inspire_Num_Motors, 1.0)
         right_q_target = np.full(Inspire_Num_Motors, 1.0)
 
-        # initialize inspire hand's cmd msg
-        self.hand_msg  = MotorCmds_()
-        self.hand_msg.cmds = [unitree_go_msg_dds__MotorCmd_() for _ in range(len(Inspire_Right_Hand_JointIndex) + len(Inspire_Left_Hand_JointIndex))]
+        # 删除inspire hand cmd msg相关代码
+        # self.hand_msg  = MotorCmds_()
+        # self.hand_msg.cmds = [unitree_go_msg_dds__MotorCmd_() for _ in range(len(Inspire_Right_Hand_JointIndex) + len(Inspire_Left_Hand_JointIndex))]
 
-        for idx, id in enumerate(Inspire_Left_Hand_JointIndex):
-            self.hand_msg.cmds[id].q = 1.0
-        for idx, id in enumerate(Inspire_Right_Hand_JointIndex):
-            self.hand_msg.cmds[id].q = 1.0
+        # for idx, id in enumerate(Inspire_Left_Hand_JointIndex):
+        #     self.hand_msg.cmds[id].q = 1.0
+        # for idx, id in enumerate(Inspire_Right_Hand_JointIndex):
+        #     self.hand_msg.cmds[id].q = 1.0
 
         try:
             while self.running:
@@ -139,7 +142,7 @@ class Inspire_Controller:
                         dual_hand_state_array[:] = state_data
                         dual_hand_action_array[:] = action_data
 
-                self.ctrl_dual_hand(left_q_target, right_q_target)
+                # self.ctrl_dual_hand(left_q_target, right_q_target)
                 current_time = time.time()
                 time_elapsed = current_time - start_time
                 sleep_time = max(0, (1 / self.fps) - time_elapsed)

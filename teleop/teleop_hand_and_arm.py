@@ -20,6 +20,8 @@ from teleop.open_television.tv_wrapper import TeleVisionWrapper
 from teleop.image_server.image_client import ImageClient
 from teleop.utils.episode_writer import EpisodeWriter
 
+from teleop.robot_control.robot_hand_inspire import Inspire_Controller
+
 import pickle
 import socket
 
@@ -94,7 +96,7 @@ if __name__ == '__main__':
 
     context = zmq.Context()
     socket = context.socket(zmq.PUB)
-    socket.bind("tcp://*:5556")  # 绑定到端口
+    socket.bind(f"tcp://*:5556")  # 绑定到端口
 
     # topic = "avp_arm_data"
 
@@ -122,9 +124,9 @@ if __name__ == '__main__':
         wrist_img_shm = shared_memory.SharedMemory(create = True, size = np.prod(wrist_img_shape) * np.uint8().itemsize)
         wrist_img_array = np.ndarray(wrist_img_shape, dtype = np.uint8, buffer = wrist_img_shm.buf)
         img_client = ImageClient(tv_img_shape = tv_img_shape, tv_img_shm_name = tv_img_shm.name, 
-                                 wrist_img_shape = wrist_img_shape, wrist_img_shm_name = wrist_img_shm.name)
+                                 wrist_img_shape = wrist_img_shape, wrist_img_shm_name = wrist_img_shm.name, server_address='localhost')
     else:
-        img_client = ImageClient(tv_img_shape = tv_img_shape, tv_img_shm_name = tv_img_shm.name)
+        img_client = ImageClient(tv_img_shape = tv_img_shape, tv_img_shm_name = tv_img_shm.name, server_address='localhost')
 
     image_receive_thread = threading.Thread(target = img_client.receive_process, daemon = True)
     image_receive_thread.daemon = True
@@ -132,14 +134,6 @@ if __name__ == '__main__':
 
     # television: obtain hand pose data from the XR device and transmit the robot's head camera image to the XR device.
     tv_wrapper = TeleVisionWrapper(BINOCULAR, tv_img_shape, tv_img_shm.name)
-
-    # arm
-    # if args.arm == 'G1_29':
-    #     arm_ctrl = G1_29_ArmController()
-    #     arm_ik = G1_29_ArmIK()
-    # elif args.arm == 'Realman':
-    #     arm_ctrl = G1_23_ArmController()
-    #     arm_ik = G1_23_ArmIK()
     
     realman_left_hand_array = np.zeros((75,), dtype=np.float64)
     realman_right_hand_array = np.zeros((75,), dtype=np.float64)
@@ -167,6 +161,15 @@ if __name__ == '__main__':
     #     hand_ctrl = Inspire_Controller(left_hand_array, right_hand_array, dual_hand_data_lock, dual_hand_state_array, dual_hand_action_array)
     # else:
     #     pass
+
+
+    # Inspire Hand
+    left_hand_pos_array = Array('d', 75, lock = True)      # [input]
+    right_hand_pos_array = Array('d', 75, lock = True)     # [input]
+    dual_hand_data_lock = Lock()
+    dual_hand_state_array = Array('d', 12, lock = False)   # [output] current left, right hand state(12) data.
+    dual_hand_action_array = Array('d', 12, lock = False)  # [output] current left, right hand action(12) data.
+    hand_ctrl = Inspire_Controller(left_hand_pos_array, right_hand_pos_array, dual_hand_data_lock, dual_hand_state_array, dual_hand_action_array, simulation_mode=args.sim)
     
     if args.record:
         recorder = EpisodeWriter(task_dir = args.task_dir, frequency = args.frequency, rerun_log = True)
@@ -183,6 +186,11 @@ if __name__ == '__main__':
                 start_time = time.time()
                 head_rmat, left_wrist, right_wrist, left_hand, right_hand = tv_wrapper.get_data()
 
+                with left_hand_pos_array.get_lock():
+                    left_hand_pos_array[:] = left_hand.flatten()
+                with right_hand_pos_array.get_lock():
+                    right_hand_pos_array[:] = right_hand.flatten()
+
                 left_roll, left_pitch, left_yaw = matrix_to_rpy(left_wrist)
                 right_roll, right_pitch, right_yaw = matrix_to_rpy(right_wrist)
                 print(f"left wrist RPY: roll={left_roll}, pitch={left_pitch}, yaw={left_yaw}")
@@ -194,25 +202,26 @@ if __name__ == '__main__':
 
                 # send hand skeleton data to hand_ctrl.control_process
                 # if args.hand:
-                realman_left_hand_array[:] = left_hand.flatten()
-                realman_right_hand_array[:] = right_hand.flatten()
+                # realman_left_hand_array[:] = left_hand.flatten()
+                # realman_right_hand_array[:] = right_hand.flatten()
 
-                left_hand_mat  = np.array(realman_left_hand_array[:]).reshape(25, 3).copy()
-                right_hand_mat = np.array(realman_right_hand_array[:]).reshape(25, 3).copy()
+                # left_hand_mat  = np.array(realman_left_hand_array[:]).reshape(25, 3).copy()
+                # right_hand_mat = np.array(realman_right_hand_array[:]).reshape(25, 3).copy()
 
-                if not np.all(right_hand_mat == 0.0) and not np.all(left_hand_mat[4] == np.array([-1.13, 0.3, 0.15])): # if hand data has been initialized.
-                    left_euclidean_distance  = np.linalg.norm(left_hand_mat[9] - left_hand_mat[4])
-                    right_euclidean_distance = np.linalg.norm(right_hand_mat[9] - right_hand_mat[4])
-                    # Linear mapping from [0, THUMB_INDEX_DISTANCE_MAX] to gripper action range
-                    left_target_action  = np.interp(left_euclidean_distance, [THUMB_INDEX_DISTANCE_MIN, THUMB_INDEX_DISTANCE_MAX], [LEFT_MAPPED_MIN, LEFT_MAPPED_MAX])
-                    right_target_action = np.interp(right_euclidean_distance, [THUMB_INDEX_DISTANCE_MIN, THUMB_INDEX_DISTANCE_MAX], [RIGHT_MAPPED_MIN, RIGHT_MAPPED_MAX])
-                else:
-                    left_target_action  = (LEFT_MAPPED_MIN + LEFT_MAPPED_MAX) / 2
-                    right_target_action = (RIGHT_MAPPED_MIN + RIGHT_MAPPED_MAX) / 2
+                # if not np.all(right_hand_mat == 0.0) and not np.all(left_hand_mat[4] == np.array([-1.13, 0.3, 0.15])): # if hand data has been initialized.
+                #     left_euclidean_distance  = np.linalg.norm(left_hand_mat[9] - left_hand_mat[4])
+                #     right_euclidean_distance = np.linalg.norm(right_hand_mat[9] - right_hand_mat[4])
+                #     # Linear mapping from [0, THUMB_INDEX_DISTANCE_MAX] to gripper action range
+                #     left_target_action  = np.interp(left_euclidean_distance, [THUMB_INDEX_DISTANCE_MIN, THUMB_INDEX_DISTANCE_MAX], [LEFT_MAPPED_MIN, LEFT_MAPPED_MAX])
+                #     right_target_action = np.interp(right_euclidean_distance, [THUMB_INDEX_DISTANCE_MIN, THUMB_INDEX_DISTANCE_MAX], [RIGHT_MAPPED_MIN, RIGHT_MAPPED_MAX])
+                # else:
+                #     left_target_action  = (LEFT_MAPPED_MIN + LEFT_MAPPED_MAX) / 2
+                #     right_target_action = (RIGHT_MAPPED_MIN + RIGHT_MAPPED_MAX) / 2
 
                 # left_target_action =np.zeros(1)
                 # right_target_action = np.zeros(1)
 
+                
                 # np concat left wrist position, left wrist orientation, right wrist position, right wrist orientation, left_target_action and right_target_action
                 # 左手腕位置 [x, y, z]
                 left_pos = [left_x, left_y, left_z]
@@ -225,7 +234,9 @@ if __name__ == '__main__':
                 right_rpy = [right_roll, right_pitch, right_yaw]
 
                 # 左右手抓取动作
-                gripper_actions = [left_target_action, right_target_action]
+                # gripper_actions = [left_target_action, right_target_action]
+                with dual_hand_data_lock:
+                    gripper_actions = dual_hand_action_array
 
                 # 拼接成一个 numpy array
                 current_command = np.concatenate([left_pos, left_rpy, right_pos, right_rpy, gripper_actions])

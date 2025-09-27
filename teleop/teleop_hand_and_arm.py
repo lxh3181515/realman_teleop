@@ -34,7 +34,7 @@ RIGHT_MAPPED_MIN = 0.0           # The minimum initial motor position when the g
 LEFT_MAPPED_MAX = LEFT_MAPPED_MIN + 1000.0 
 RIGHT_MAPPED_MAX = RIGHT_MAPPED_MIN + 1000.0
 
-
+ROBOT_IMAGE_SERVER_IP = "lcoalhost"
 
 def matrix_to_rpy(matrix):
     """Extract RPY (ZYX convention) from a 4x4 homogeneous matrix."""
@@ -83,16 +83,6 @@ if __name__ == '__main__':
         # 'wrist_camera_image_shape': [480, 640],                           # Wrist camera resolution  [height, width]
         # 'wrist_camera_id_numbers': [0,1],                                 # '/dev/video0' and '/dev/video1' (opencv)
     }
-    # img_config = {
-    #     'fps': 30,
-    #     'head_camera_type': 'opencv',
-    #     'head_camera_image_shape': [480, 1280],  # Head camera resolution
-    #     'head_camera_id_numbers': [0],
-    #     'wrist_camera_type': 'opencv',
-    #     'wrist_camera_image_shape': [480, 640],  # Wrist camera resolution
-    #     'wrist_camera_id_numbers': [2, 4],
-    # }
-
 
     context = zmq.Context()
     socket = context.socket(zmq.PUB)
@@ -124,9 +114,9 @@ if __name__ == '__main__':
         wrist_img_shm = shared_memory.SharedMemory(create = True, size = np.prod(wrist_img_shape) * np.uint8().itemsize)
         wrist_img_array = np.ndarray(wrist_img_shape, dtype = np.uint8, buffer = wrist_img_shm.buf)
         img_client = ImageClient(tv_img_shape = tv_img_shape, tv_img_shm_name = tv_img_shm.name, 
-                                 wrist_img_shape = wrist_img_shape, wrist_img_shm_name = wrist_img_shm.name, server_address='localhost')
+                                 wrist_img_shape = wrist_img_shape, wrist_img_shm_name = wrist_img_shm.name, server_address=ROBOT_IMAGE_SERVER_IP)
     else:
-        img_client = ImageClient(tv_img_shape = tv_img_shape, tv_img_shm_name = tv_img_shm.name, server_address='localhost')
+        img_client = ImageClient(tv_img_shape = tv_img_shape, tv_img_shm_name = tv_img_shm.name, server_address=ROBOT_IMAGE_SERVER_IP)
 
     image_receive_thread = threading.Thread(target = img_client.receive_process, daemon = True)
     image_receive_thread.daemon = True
@@ -137,40 +127,7 @@ if __name__ == '__main__':
     
     realman_left_hand_array = np.zeros((75,), dtype=np.float64)
     realman_right_hand_array = np.zeros((75,), dtype=np.float64)
-    # hand
-    # if args.hand == "dex3":
-    #     left_hand_array = Array('d', 75, lock = True)         # [input]
-    #     right_hand_array = Array('d', 75, lock = True)        # [input]
-    #     dual_hand_data_lock = Lock()
-    #     dual_hand_state_array = Array('d', 14, lock = False)  # [output] current left, right hand state(14) data.
-    #     dual_hand_action_array = Array('d', 14, lock = False) # [output] current left, right hand action(14) data.
-    #     hand_ctrl = Dex3_1_Controller(left_hand_array, right_hand_array, dual_hand_data_lock, dual_hand_state_array, dual_hand_action_array)
-    # elif args.hand == "gripper":
-    #     left_hand_array = Array('d', 75, lock=True)
-    #     right_hand_array = Array('d', 75, lock=True)
-    #     dual_gripper_data_lock = Lock()
-    #     dual_gripper_state_array = Array('d', 2, lock=False)   # current left, right gripper state(2) data.
-    #     dual_gripper_action_array = Array('d', 2, lock=False)  # current left, right gripper action(2) data.
-    #     gripper_ctrl = Gripper_Controller(left_hand_array, right_hand_array, dual_gripper_data_lock, dual_gripper_state_array, dual_gripper_action_array)
-    # elif args.hand == "inspire1":
-    #     left_hand_array = Array('d', 75, lock = True)          # [input]
-    #     right_hand_array = Array('d', 75, lock = True)         # [input]
-    #     dual_hand_data_lock = Lock()
-    #     dual_hand_state_array = Array('d', 12, lock = False)   # [output] current left, right hand state(12) data.
-    #     dual_hand_action_array = Array('d', 12, lock = False)  # [output] current left, right hand action(12) data.
-    #     hand_ctrl = Inspire_Controller(left_hand_array, right_hand_array, dual_hand_data_lock, dual_hand_state_array, dual_hand_action_array)
-    # else:
-    #     pass
 
-
-    # Inspire Hand
-    left_hand_pos_array = Array('d', 75, lock = True)      # [input]
-    right_hand_pos_array = Array('d', 75, lock = True)     # [input]
-    dual_hand_data_lock = Lock()
-    dual_hand_state_array = Array('d', 12, lock = False)   # [output] current left, right hand state(12) data.
-    dual_hand_action_array = Array('d', 12, lock = False)  # [output] current left, right hand action(12) data.
-    hand_ctrl = Inspire_Controller(left_hand_pos_array, right_hand_pos_array, dual_hand_data_lock, dual_hand_state_array, dual_hand_action_array, simulation_mode=args.sim)
-    
     if args.record:
         recorder = EpisodeWriter(task_dir = args.task_dir, frequency = args.frequency, rerun_log = True)
         recording = False
@@ -186,40 +143,18 @@ if __name__ == '__main__':
                 start_time = time.time()
                 head_rmat, left_wrist, right_wrist, left_hand, right_hand = tv_wrapper.get_data()
 
-                with left_hand_pos_array.get_lock():
-                    left_hand_pos_array[:] = left_hand.flatten()
-                with right_hand_pos_array.get_lock():
-                    right_hand_pos_array[:] = right_hand.flatten()
+                # Data availability checked
+                # print(f"left hand raw:\n{left_hand}\n")
+                # print(f"right hand raw:\n{right_hand}\n")
 
                 left_roll, left_pitch, left_yaw = matrix_to_rpy(left_wrist)
                 right_roll, right_pitch, right_yaw = matrix_to_rpy(right_wrist)
-                print(f"left wrist RPY: roll={left_roll}, pitch={left_pitch}, yaw={left_yaw}")
-                print(f"right wrist RPY: roll={right_roll}, pitch={right_pitch}, yaw={right_yaw}")
+                # print(f"left wrist RPY: roll={left_roll}, pitch={left_pitch}, yaw={left_yaw}")
+                # print(f"right wrist RPY: roll={right_roll}, pitch={right_pitch}, yaw={right_yaw}")
                 left_x, left_y, left_z = left_wrist[0, 3], left_wrist[1, 3], left_wrist[2, 3]
                 right_x, right_y, right_z = right_wrist[0, 3], right_wrist[1, 3], right_wrist[2, 3]
-                print(f"left wrist position: x={left_x}, y={left_y}, z={left_z}")
-                print(f"right wrist position: x={right_x}, y={right_y}, z={right_z}")
-
-                # send hand skeleton data to hand_ctrl.control_process
-                # if args.hand:
-                # realman_left_hand_array[:] = left_hand.flatten()
-                # realman_right_hand_array[:] = right_hand.flatten()
-
-                # left_hand_mat  = np.array(realman_left_hand_array[:]).reshape(25, 3).copy()
-                # right_hand_mat = np.array(realman_right_hand_array[:]).reshape(25, 3).copy()
-
-                # if not np.all(right_hand_mat == 0.0) and not np.all(left_hand_mat[4] == np.array([-1.13, 0.3, 0.15])): # if hand data has been initialized.
-                #     left_euclidean_distance  = np.linalg.norm(left_hand_mat[9] - left_hand_mat[4])
-                #     right_euclidean_distance = np.linalg.norm(right_hand_mat[9] - right_hand_mat[4])
-                #     # Linear mapping from [0, THUMB_INDEX_DISTANCE_MAX] to gripper action range
-                #     left_target_action  = np.interp(left_euclidean_distance, [THUMB_INDEX_DISTANCE_MIN, THUMB_INDEX_DISTANCE_MAX], [LEFT_MAPPED_MIN, LEFT_MAPPED_MAX])
-                #     right_target_action = np.interp(right_euclidean_distance, [THUMB_INDEX_DISTANCE_MIN, THUMB_INDEX_DISTANCE_MAX], [RIGHT_MAPPED_MIN, RIGHT_MAPPED_MAX])
-                # else:
-                #     left_target_action  = (LEFT_MAPPED_MIN + LEFT_MAPPED_MAX) / 2
-                #     right_target_action = (RIGHT_MAPPED_MIN + RIGHT_MAPPED_MAX) / 2
-
-                # left_target_action =np.zeros(1)
-                # right_target_action = np.zeros(1)
+                # print(f"left wrist position: x={left_x}, y={left_y}, z={left_z}")
+                # print(f"right wrist position: x={right_x}, y={right_y}, z={right_z}")
 
                 
                 # np concat left wrist position, left wrist orientation, right wrist position, right wrist orientation, left_target_action and right_target_action
@@ -235,8 +170,36 @@ if __name__ == '__main__':
 
                 # 左右手抓取动作
                 # gripper_actions = [left_target_action, right_target_action]
-                with dual_hand_data_lock:
-                    gripper_actions = dual_hand_action_array
+                # with dual_hand_data_lock:
+                #     gripper_actions = dual_hand_action_array
+
+                gripper_actions = None
+
+                # 计算6自由度灵巧手角度（0~1归一化）
+                def calc_finger_angles(hand_mat):
+                    # hand_mat: (25, 3)
+                    # 4:拇指指尖, 9:食指指尖, 14:中指指尖, 19:无名指指尖, 24:小指指尖, 0:掌心
+                    palm = hand_mat[0]
+                    idxs = [4, 9, 14, 19, 24]
+                    angles = []
+                    for i in idxs:
+                        tip = hand_mat[i]
+                        dist = np.linalg.norm(tip - palm)
+                        min_dist, max_dist = 0.03, 0.09
+                        angle = 1.0 - np.clip((dist - min_dist) / (max_dist - min_dist), 0, 1)
+                        angles.append(angle)
+                    # 第6自由度用拇指与食指指尖距离
+                    thumb_tip = hand_mat[4]
+                    index_tip = hand_mat[9]
+                    thumb_index_dist = np.linalg.norm(thumb_tip - index_tip)
+                    min_dist2, max_dist2 = 0.02, 0.07
+                    angle6 = 1.0 - np.clip((thumb_index_dist - min_dist2) / (max_dist2 - min_dist2), 0, 1)
+                    angles.append(angle6)
+                    return np.array(angles, dtype=np.float32)
+
+                left_finger_angles = calc_finger_angles(left_hand)
+                right_finger_angles = calc_finger_angles(right_hand)
+                gripper_actions = np.concatenate([left_finger_angles, right_finger_angles])  # shape (12,)
 
                 # 拼接成一个 numpy array
                 current_command = np.concatenate([left_pos, left_rpy, right_pos, right_rpy, gripper_actions])
@@ -276,103 +239,6 @@ if __name__ == '__main__':
                             recording = False
                     else:
                         recorder.save_episode()
-
-                # # record data
-                # if args.record:
-                #     # dex hand or gripper
-                #     if args.hand == "dex3":
-                #         with dual_hand_data_lock:
-                #             left_hand_state = dual_hand_state_array[:7]
-                #             right_hand_state = dual_hand_state_array[-7:]
-                #             left_hand_action = dual_hand_action_array[:7]
-                #             right_hand_action = dual_hand_action_array[-7:]
-                #     elif args.hand == "gripper":
-                #         with dual_gripper_data_lock:
-                #             left_hand_state = [dual_gripper_state_array[1]]
-                #             right_hand_state = [dual_gripper_state_array[0]]
-                #             left_hand_action = [dual_gripper_action_array[1]]
-                #             right_hand_action = [dual_gripper_action_array[0]]
-                #     elif args.hand == "inspire1":
-                #         with dual_hand_data_lock:
-                #             left_hand_state = dual_hand_state_array[:6]
-                #             right_hand_state = dual_hand_state_array[-6:]
-                #             left_hand_action = dual_hand_action_array[:6]
-                #             right_hand_action = dual_hand_action_array[-6:]
-                #     else:
-                #         print("No dexterous hand set.")
-                #         pass
-                #     # head image
-                #     current_tv_image = tv_img_array.copy()
-                #     # wrist image
-                #     if WRIST:
-                #         current_wrist_image = wrist_img_array.copy()
-                #     # # arm state and action
-                #     # left_arm_state  = current_lr_arm_q[:7]
-                #     # right_arm_state = current_lr_arm_q[-7:]
-                #     # left_arm_action = sol_q[:7]
-                #     # right_arm_action = sol_q[-7:]
-
-                #     # if recording:
-                #     #     colors = {}
-                #     #     depths = {}
-                #     #     if BINOCULAR:
-                #     #         colors[f"color_{0}"] = current_tv_image[:, :tv_img_shape[1]//2]
-                #     #         colors[f"color_{1}"] = current_tv_image[:, tv_img_shape[1]//2:]
-                #     #         if WRIST:
-                #     #             colors[f"color_{2}"] = current_wrist_image[:, :wrist_img_shape[1]//2]
-                #     #             colors[f"color_{3}"] = current_wrist_image[:, wrist_img_shape[1]//2:]
-                #     #     else:
-                #     #         colors[f"color_{0}"] = current_tv_image
-                #     #         if WRIST:
-                #     #             colors[f"color_{1}"] = current_wrist_image[:, :wrist_img_shape[1]//2]
-                #     #             colors[f"color_{2}"] = current_wrist_image[:, wrist_img_shape[1]//2:]
-                #     #     states = {
-                #     #         "left_arm": {                                                                    
-                #     #             "qpos":   left_arm_state.tolist(),    # numpy.array -> list
-                #     #             "qvel":   [],                          
-                #     #             "torque": [],                        
-                #     #         }, 
-                #     #         "right_arm": {                                                                    
-                #     #             "qpos":   right_arm_state.tolist(),       
-                #     #             "qvel":   [],                          
-                #     #             "torque": [],                         
-                #     #         },                        
-                #     #         "left_hand": {                                                                    
-                #     #             "qpos":   left_hand_state,           
-                #     #             "qvel":   [],                           
-                #     #             "torque": [],                          
-                #     #         }, 
-                #     #         "right_hand": {                                                                    
-                #     #             "qpos":   right_hand_state,       
-                #     #             "qvel":   [],                           
-                #     #             "torque": [],  
-                #     #         }, 
-                #     #         "body": None, 
-                #     #     }
-                #     #     actions = {
-                #     #         "left_arm": {                                   
-                #     #             "qpos":   left_arm_action.tolist(),       
-                #     #             "qvel":   [],       
-                #     #             "torque": [],      
-                #     #         }, 
-                #     #         "right_arm": {                                   
-                #     #             "qpos":   right_arm_action.tolist(),       
-                #     #             "qvel":   [],       
-                #     #             "torque": [],       
-                #     #         },                         
-                #     #         "left_hand": {                                   
-                #     #             "qpos":   left_hand_action,       
-                #     #             "qvel":   [],       
-                #     #             "torque": [],       
-                #     #         }, 
-                #     #         "right_hand": {                                   
-                #     #             "qpos":   right_hand_action,       
-                #     #             "qvel":   [],       
-                #     #             "torque": [], 
-                #     #         }, 
-                #     #         "body": None, 
-                #     #     }
-                #     #     recorder.add_item(colors=colors, depths=depths, states=states, actions=actions)
 
                 current_time = time.time()
                 time_elapsed = current_time - start_time

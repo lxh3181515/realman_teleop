@@ -14,7 +14,7 @@ ROBOT_TCP_PORT = 8080             # 端口假定一致
 
 SPEED = 10  # 速度系数
 
-
+COMMAND_SERVER_IP = "localhost"
 
 def parse_command(command):
     """
@@ -115,12 +115,8 @@ def normalized_hand_to_registers(hand_norm, scale=1000, expected_len=None):
             fv = float(v)
         except Exception:
             fv = 0.0
-        # 判断范围并映射
-        if -1.0 <= fv <= 1.0:
-            mapped = (fv + 1.0) / 2.0
-        else:
-            mapped = max(0.0, min(1.0, fv))
-        val = int(round(mapped * scale))
+        val = int(round(fv * scale))
+        val = min(scale, max(0, val))  # 限制在0..scale
         regs.append(val)
     if expected_len is not None and len(regs) < expected_len:
         regs.extend([0] * (expected_len - len(regs)))
@@ -133,7 +129,7 @@ def main():
 
     context = zmq.Context()
     socket_zmq = context.socket(zmq.SUB)
-    socket_zmq.connect("tcp://localhost:5556")  # 与teleop_hand_and_arm.py一致
+    socket_zmq.connect(f"tcp://{COMMAND_SERVER_IP}:5556")  # 与teleop_hand_and_arm.py一致
     socket_zmq.setsockopt_string(zmq.SUBSCRIBE, "avp_upper_command")
 
     # 建立左右臂TCP连接（运动控制）
@@ -177,14 +173,16 @@ def main():
             # left['hand'] 和 right['hand'] 预期为数字列表
             try:
                 # 将归一化数据转换为寄存器值（映射到0-1000）
-                left_regs = normalized_hand_to_registers(left.get("hand", []), scale=2000)
-                right_regs = normalized_hand_to_registers(right.get("hand", []), scale=2000)
+                left_regs = normalized_hand_to_registers(left.get("hand", []), scale=1000)
+                right_regs = normalized_hand_to_registers(right.get("hand", []), scale=1000)
 
+                left_gateway.write_registers('angleSet', left_regs) if left_gateway else None
+                right_gateway.write_registers('angleSet', right_regs) if right_gateway else None
                 # 异步写入以避免阻塞主循环
-                if left_gateway:
-                    threading.Thread(target=left_gateway.write_registers, args=('angleSet', left_regs), daemon=True).start()
-                if right_gateway:
-                    threading.Thread(target=right_gateway.write_registers, args=('angleSet', right_regs), daemon=True).start()
+                # if left_gateway:
+                #     threading.Thread(target=left_gateway.write_registers, args=('angleSet', left_regs), daemon=True).start()
+                # if right_gateway:
+                #     threading.Thread(target=right_gateway.write_registers, args=('angleSet', right_regs), daemon=True).start()
             except Exception as e:
                 print(f"Hand control error: {e}")
 

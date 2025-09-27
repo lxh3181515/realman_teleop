@@ -101,11 +101,15 @@ class Inspire_Controller:
             while self.running:
                 start_time = time.time()
                 # get dual hand state
-                left_hand_mat  = np.array(left_hand_array[:]).reshape(25, 3).copy()
-                right_hand_mat = np.array(right_hand_array[:]).reshape(25, 3).copy()
+                with left_hand_array.get_lock():
+                    left_hand_mat  = np.array(left_hand_array[:]).reshape(25, 3).copy()
+                with right_hand_array.get_lock():
+                    right_hand_mat = np.array(right_hand_array[:]).reshape(25, 3).copy()
 
                 # Read left and right q_state from shared arrays
                 state_data = np.concatenate((np.array(left_hand_state_array[:]), np.array(right_hand_state_array[:])))
+
+                # print(f"left hand mat:\n{left_hand_mat}\n")
 
                 if not np.all(right_hand_mat == 0.0) and not np.all(left_hand_mat[4] == np.array([-1.13, 0.3, 0.15])): # if hand data has been initialized.
                     ref_left_value = left_hand_mat[inspire_tip_indices]
@@ -113,6 +117,8 @@ class Inspire_Controller:
 
                     left_q_target  = self.hand_retargeting.left_retargeting.retarget(ref_left_value)[self.hand_retargeting.left_dex_retargeting_to_hardware]
                     right_q_target = self.hand_retargeting.right_retargeting.retarget(ref_right_value)[self.hand_retargeting.right_dex_retargeting_to_hardware]
+
+                    # print(f"left hand target:\n{left_q_target}\n")
 
                     # In website https://support.unitree.com/home/en/G1_developer/inspire_dfx_dexterous_hand, you can find
                     #     In the official document, the angles are in the range [0, 1] ==> 0.0: fully closed  1.0: fully open
@@ -124,16 +130,16 @@ class Inspire_Controller:
                     def normalize(val, min_val, max_val):
                         return np.clip((max_val - val) / (max_val - min_val), 0.0, 1.0)
 
-                    for idx in range(Inspire_Num_Motors):
-                        if idx <= 3:
-                            left_q_target[idx]  = normalize(left_q_target[idx], 0.0, 1.7)
-                            right_q_target[idx] = normalize(right_q_target[idx], 0.0, 1.7)
-                        elif idx == 4:
-                            left_q_target[idx]  = normalize(left_q_target[idx], 0.0, 0.5)
-                            right_q_target[idx] = normalize(right_q_target[idx], 0.0, 0.5)
-                        elif idx == 5:
-                            left_q_target[idx]  = normalize(left_q_target[idx], -0.1, 1.3)
-                            right_q_target[idx] = normalize(right_q_target[idx], -0.1, 1.3)
+                    # for idx in range(Inspire_Num_Motors):
+                    #     if idx <= 3:
+                    #         left_q_target[idx]  = normalize(left_q_target[idx], 0.0, 1.7)
+                    #         right_q_target[idx] = normalize(right_q_target[idx], 0.0, 1.7)
+                    #     elif idx == 4:
+                    #         left_q_target[idx]  = normalize(left_q_target[idx], 0.0, 0.5)
+                    #         right_q_target[idx] = normalize(right_q_target[idx], 0.0, 0.5)
+                    #     elif idx == 5:
+                    #         left_q_target[idx]  = normalize(left_q_target[idx], -0.1, 1.3)
+                    #         right_q_target[idx] = normalize(right_q_target[idx], -0.1, 1.3)
 
                 # get dual hand action
                 action_data = np.concatenate((left_q_target, right_q_target))    

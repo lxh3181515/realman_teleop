@@ -28,7 +28,7 @@ class ArmModbusGateway:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.settimeout(10)
             self.sock.connect((self.arm_ip, self.arm_port))
-            print("--> 连接成功！")
+            # print("--> 连接成功！")
             return True
         except socket.error as e:
             print(f"!! 错误：连接失败 - {e}")
@@ -39,7 +39,7 @@ class ArmModbusGateway:
         if self.sock:
             self.sock.close()
             self.sock = None
-            print("--> 已断开与机械臂的连接。")
+            # print("--> 已断开与机械臂的连接。")
 
     def _send_and_receive(self, command_dict):
         if not self.sock:
@@ -48,7 +48,7 @@ class ArmModbusGateway:
         
         try:
             json_command = json.dumps(command_dict) + "\r\n"
-            print(f"   [发送JSON]: {json_command.strip()}")
+            # print(f"   [发送JSON]: {json_command.strip()}")
             self.sock.sendall(json_command.encode('utf-8'))
             
             response_raw = self.sock.recv(1024)
@@ -58,7 +58,7 @@ class ArmModbusGateway:
                 print("!! 警告: 未收到回复。")
                 return None
 
-            print(f"   [接收JSON]: {response_str}")
+            # print(f"   [接收JSON]: {response_str}")
             return json.loads(response_str)
 
         except json.JSONDecodeError:
@@ -72,7 +72,7 @@ class ArmModbusGateway:
             return None
 
     def setup_tool_modbus(self, timeout_ms=500): # 稍微增加超时时间
-        print("\n[步骤 1]: 正在配置末端接口为Modbus模式...")
+        # print("\n[步骤 1]: 正在配置末端接口为Modbus模式...")
         command = {
             "command": "set_modbus_mode",
             "port": self.TOOL_PORT_ID,
@@ -81,26 +81,26 @@ class ArmModbusGateway:
         }
         response = self._send_and_receive(command)
         if response and response.get("set_state") is True:
-            print(">>> Modbus模式配置成功！")
+            # print(">>> Modbus模式配置成功！")
             return True
         else:
             print("!! 错误: Modbus模式配置失败。")
             return False
 
     def close_tool_modbus(self):
-        print("\n[步骤 3]: 正在关闭Modbus模式...")
+        # print("\n[步骤 3]: 正在关闭Modbus模式...")
         command = {
             "command": "close_modbus_mode",
             "port": self.TOOL_PORT_ID
         }
         self._send_and_receive(command) # 发送即可，不强求确认
-        print(">>> 已发送关闭Modbus模式指令。")
+        # print(">>> 已发送关闭Modbus模式指令。")
 
     def write_registers(self, reg_name, int16_values):
         """
         【核心修正】将16位整数列表转换为字节列表后发送。
         """
-        print(f"\n--- 正在写入 {reg_name} ---")
+        # print(f"\n--- 正在写入 {reg_name} ---")
         if reg_name not in self.REG_ADDR:
             print(f"!! 错误: 未知的寄存器名称 '{reg_name}'")
             return False
@@ -125,7 +125,7 @@ class ArmModbusGateway:
         }
         response = self._send_and_receive(command)
         if response and response.get("write_state") is True:
-            print(f">>> {reg_name} 写入指令发送成功。")
+            # print(f">>> {reg_name} 写入指令发送成功。")
             return True
         else:
             print(f"!! 错误: {reg_name} 写入指令发送失败。可能是因为控制器未返回确认。")
@@ -135,7 +135,7 @@ class ArmModbusGateway:
         """
         【核心修正】读取字节流并将其解析为16位整数列表。
         """
-        print(f"\n--- 正在读取 {reg_name} ---")
+        # print(f"\n--- 正在读取 {reg_name} ---")
         if reg_name not in self.REG_ADDR:
             print(f"!! 错误: 未知的寄存器名称 '{reg_name}'")
             return None
@@ -158,7 +158,7 @@ class ArmModbusGateway:
                     low_byte = byte_data[i+1]
                     value = (high_byte << 8) + low_byte
                     int16_values.append(value)
-                print(f">>> 读取成功，当前 {reg_name} 值为: {int16_values}")
+                # print(f">>> 读取成功，当前 {reg_name} 值为: {int16_values}")
                 return int16_values
             else:
                 print(f"!! 错误: 返回的字节数不是偶数: {byte_data}")
@@ -183,7 +183,7 @@ if __name__ == '__main__':
 
         time.sleep(0.5)
 
-        print("\n[初始化]: 正在设置默认速度和力度...")
+        # print("\n[初始化]: 正在设置默认速度和力度...")
         gateway.write_registers('speedSet', [300, 300, 300, 300, 300, 300])
         time.sleep(0.2)
         gateway.write_registers('forceSet', [200, 200, 400, 600, 800, 500])
